@@ -72,7 +72,16 @@ case "${API_SERVER_ENABLED:-}" in
         ;;
 esac
 
-if [ "$railway_env" = true ] && [ -n "${PORT:-}" ] && { [ "$api_server_requested" = true ] || [ -n "${API_SERVER_KEY:-}" ]; }; then
+railway_dashboard_start=false
+for arg in "$@"; do
+    case "$arg" in
+        */railway-start.sh|railway-start.sh)
+            railway_dashboard_start=true
+            ;;
+    esac
+done
+
+if [ "$railway_env" = true ] && [ "$railway_dashboard_start" != true ] && [ -n "${PORT:-}" ] && { [ "$api_server_requested" = true ] || [ -n "${API_SERVER_KEY:-}" ]; }; then
     export API_SERVER_PORT="${API_SERVER_PORT:-$PORT}"
     export API_SERVER_HOST="${API_SERVER_HOST:-0.0.0.0}"
 fi
