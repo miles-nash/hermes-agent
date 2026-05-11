@@ -57,6 +57,26 @@ fi
 # --- Running as hermes from here ---
 source "${INSTALL_DIR}/.venv/bin/activate"
 
+# Railway injects PORT for the public target port. Hermes keeps the gateway
+# API server port in API_SERVER_PORT, so bridge the two only when the API server
+# is explicitly enabled or authenticated.
+railway_env=false
+if [ -n "${RAILWAY_ENVIRONMENT:-}" ] || [ -n "${RAILWAY_PROJECT_ID:-}" ] || [ -n "${RAILWAY_SERVICE_ID:-}" ]; then
+    railway_env=true
+fi
+
+api_server_requested=false
+case "${API_SERVER_ENABLED:-}" in
+    1|true|TRUE|True|yes|YES|Yes)
+        api_server_requested=true
+        ;;
+esac
+
+if [ "$railway_env" = true ] && [ -n "${PORT:-}" ] && { [ "$api_server_requested" = true ] || [ -n "${API_SERVER_KEY:-}" ]; }; then
+    export API_SERVER_PORT="${API_SERVER_PORT:-$PORT}"
+    export API_SERVER_HOST="${API_SERVER_HOST:-0.0.0.0}"
+fi
+
 # Create essential directory structure.  Cache and platform directories
 # (cache/images, cache/audio, platforms/whatsapp, etc.) are created on
 # demand by the application — don't pre-create them here so new installs
@@ -147,6 +167,10 @@ esac
 # `sleep infinity` sandbox containers — see tools/environments/docker.py).
 # Otherwise we treat the args as a hermes subcommand and wrap with `hermes`,
 # preserving the documented `docker run <image> <subcommand>` behavior.
+if [ "${1:-}" = "$0" ] || [ "${1:-}" = "${INSTALL_DIR}/docker/entrypoint.sh" ]; then
+    shift
+fi
+
 if [ $# -gt 0 ] && command -v "$1" >/dev/null 2>&1; then
     exec "$@"
 fi
